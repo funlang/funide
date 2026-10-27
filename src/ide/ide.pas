@@ -462,6 +462,7 @@ type
     procedure LocateActiveFileInTree;
     function LogFile: string;
     procedure NewTab;
+    procedure ApplyPaneFont;
     procedure OpenTab(const f: string);
     procedure RefreshTree;
     procedure Search(so: TSynSearchOptions = []);
@@ -1785,6 +1786,7 @@ begin
   begin
     for i := 0 to tabs.PageCount - 1 do
       fOptions.AssignTo(TfTab(tabs.Pages[i]).fEdit);
+    ApplyPaneFont;
     ;
     if fInis = nil then fInis := TStringList.Create;
     fInis.Values['Font-Name'] := fOptions.Font.Name;
@@ -2280,11 +2282,8 @@ begin
   ;
   
   pr.Width := Self.ClientWidth * 3 div 10;
-  with mmoFind do
-  begin
-    Font.Size := 10;
-    RightEdge := 70;
-  end;
+  mmoFind.RightEdge := 70;
+  ApplyPaneFont;
   
   with TTimer.Create(Self) do
   begin
@@ -2785,6 +2784,21 @@ begin
   if fInis.Values['Font-Size'] <> '' then t.fEdit.Font.Size := StrToInt(fInis.Values['Font-Size']);
   if fInis.Values['RightEdge'] <> '' then t.fEdit.RightEdge := StrToInt(fInis.Values['RightEdge']);
   if fInis.Values['ExtraLineSpacing'] <> '' then t.fEdit.ExtraLineSpacing := StrToInt(fInis.Values['ExtraLineSpacing']);
+end;
+
+// The find and output panes are separate editors, so they do not inherit the
+// editor font automatically.  Follow the active editor font (the one changed
+// by the Options dialog) instead of using a hard-coded point size.
+procedure TfIDE.ApplyPaneFont;
+var
+  F: TFont;
+begin
+  if ActiveEdit <> nil then
+    F := ActiveEdit.Font
+  else
+    F := Self.Font;
+  mmoReplace.Font.Assign(F);
+  mmoFind.Font.Assign(F);
 end;
 
 procedure TfIDE.OpenTab(const f: string);
@@ -3424,7 +3438,6 @@ begin
                            ];
   BorderStyle := bsNone;
   WordWrap    := True;
-  Font.Size   := 8;
   ActiveLineColor       := $f4f8f8;
   Gutter.Visible        := False;
   //WordWrapGlyph.Visible := False;
