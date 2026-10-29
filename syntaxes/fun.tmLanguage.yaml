@@ -17,6 +17,8 @@
 #   Comments    : #  line comment   //  line comment   #* ... #  block comment
 #   Operators   : & + - * / ^ << >> < > != <> <= >= =~ !~ = += -= *= &=
 #                 -> |  and the dot-operator form .<opchars>  (e.g. ?.)
+#   Members     : reserved words are identifiers after a member dot
+#                 (obj.fun, obj?.fun); `?. exp` is still the echo operator
 ---
 # http://www.sublimetext.com/docs/3/syntax.html
 name: Fun
@@ -28,6 +30,7 @@ patterns:
   - include: '#regex'
   - include: '#strings'
   - include: '#numbers'
+  - include: '#member-access'
   - include: '#constants'
   - include: '#language-variables'
   - include: '#keywords'
@@ -113,6 +116,24 @@ repository:
     patterns:
       - name: constant.numeric.fun
         match: '\b(?:(?:[0-9]+(?:\.[0-9]+)?(?:[eE][-+]?[0-9]+)?)|(?:\.[0-9]+)|(?:0[xX][0-9a-fA-F]+)|(?:0[bB][01]+))\b'
+
+  # Reserved words are valid member names after a member-access dot
+  # (obj.fun, obj?.fun).  This must run before #constants and #keywords so
+  # that o.if / o.true / o.this are not coloured as keywords.
+  member-access:
+    patterns:
+      # expr?.name: the '?' modifies the preceding expression, so the name
+      # is a member.  `?. exp` at the start of a statement (echo operator)
+      # does not match the lookbehind.
+      - match: '(?<=[A-Za-z0-9_$@)\]}''"`])(\?\.)[ \t]*([$_@A-Za-z][$_@A-Za-z0-9]*)'
+        captures:
+          '1': { name: keyword.operator.fun }
+          '2': { name: variable.other.member.fun }
+      # Plain member access.  Exclude the dot that belongs to `?.`.
+      - match: '(?<!\?)(\.)[ \t]*([$_@A-Za-z][$_@A-Za-z0-9]*)'
+        captures:
+          '1': { name: punctuation.other.fun }
+          '2': { name: variable.other.member.fun }
 
   # true / false / null / nil
   constants:

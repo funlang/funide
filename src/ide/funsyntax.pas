@@ -141,6 +141,7 @@ type
     function AltFunc(Index: Integer): TtkTokenKind;
     procedure InitIdent;
     function IdentKind(MayBe: PWideChar): TtkTokenKind;
+    function IsMemberAccess(Index: Integer): Boolean;
     procedure NullProc;
     procedure SpaceProc;
     procedure CRProc;
@@ -876,9 +877,43 @@ begin
   else
   begin
     fTokenID := IdentKind((fLine + Run));
+    // Reserved words are valid member names (obj.fun, obj?.fun); do not
+    // colour them as keywords when they follow a member-access dot.
+    if (fTokenID = tkKey) and IsMemberAccess(Run) then
+      fTokenID := tkIdentifier;
     Inc(Run, fStringLen);
     while IsIdentChar(fLine[Run]) do Inc(Run);
   end;
+end;
+
+function TFunSyntax.IsMemberAccess(Index: Integer): Boolean;
+var
+  i, j: Integer;
+  Ch: WideChar;
+begin
+  // Find the last non-blank character before the identifier.
+  i := Index - 1;
+  while (i > 0) and (fLine[i] in [' ', #9]) do Dec(i);
+  Result := (i > 0) and (fLine[i] = '.');
+  if not Result then Exit;
+  // `?.` is the echo operator unless the '?' postfixes an expression.
+  if (i > 1) and (fLine[i - 1] = '?') then
+  begin
+    j := i - 2;
+    while (j > 0) and (fLine[j] in [' ', #9]) do Dec(j);
+    if j = 0 then
+    begin
+      Result := False;
+      Exit;
+    end;
+    Ch := fLine[j];
+    if not (IsIdentChar(Ch) or (Ch in [')', ']', '}', '"', '''', '`'])) then
+    begin
+      Result := False;
+      Exit;
+    end;
+  end;
+  Result := True;
 end;
 
 procedure TFunSyntax.NumberProc;
