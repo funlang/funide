@@ -43,6 +43,8 @@ this base result @
 CHARS
 
 '$', '_', '@'..'Z', 'a'..'z':: Ident
+var
+  i, j: integer;
 BeginProc
   if (fLine[Run] = '$') and (fLine[Run+1] in ['"', '''', '`']) then
   begin
@@ -52,6 +54,27 @@ BeginProc
   else
   begin
     fTokenID := IdentKind((fLine + Run));
+    // Reserved words are valid member names (obj.fun, obj?.fun); do not
+    // colour them as keywords when they follow a member-access dot.
+    if fTokenID = tkKey then
+    begin
+      i := Run - 1;
+      while (i > 0) and (fLine[i] in [' ', #9]) do Dec(i);
+      if (i > 0) and (fLine[i] = '.') then
+      begin
+        j := i - 1;
+        if (j > 0) and (fLine[j] = '?') then
+        begin
+          Dec(j);
+          while (j > 0) and (fLine[j] in [' ', #9]) do Dec(j);
+          if (j > 0) and
+             (IsIdentChar(fLine[j]) or (fLine[j] in [')', ']', '}', '"', '''', '`'])) then
+            fTokenID := tkIdentifier;
+        end
+        else
+          fTokenID := tkIdentifier;
+      end;
+    end;
     Inc(Run, fStringLen);
     while IsIdentChar(fLine[Run]) do Inc(Run);
   end;
