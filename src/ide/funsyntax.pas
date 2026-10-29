@@ -905,10 +905,50 @@ begin
 end;
 
 procedure TFunSyntax.NumberProc;
+var
+  c: WideChar;
+  i: Integer;
 begin
   fTokenID := tkNumber;
-  Inc(Run);
+  c := fLine[Run];
+  if c = '0' then
+  begin
+    if fLine[Run + 1] in ['x', 'X'] then
+    begin
+      if fLine[Run + 2] in ['0'..'9', 'A'..'F', 'a'..'f'] then
+      begin
+        Inc(Run, 2);
+        while fLine[Run] in ['0'..'9', 'A'..'F', 'a'..'f'] do Inc(Run);
+        Exit;
+      end;
+    end
+    else if fLine[Run + 1] in ['b', 'B'] then
+    begin
+      if fLine[Run + 2] in ['0', '1'] then
+      begin
+        Inc(Run, 2);
+        while fLine[Run] in ['0', '1'] do Inc(Run);
+        Exit;
+      end;
+    end;
+  end;
+  if c = '.' then Inc(Run);
   while fLine[Run] in ['0'..'9'] do Inc(Run);
+  if (fLine[Run] = '.') and (fLine[Run + 1] in ['0'..'9']) then
+  begin
+    Inc(Run);
+    while fLine[Run] in ['0'..'9'] do Inc(Run);
+  end;
+  if fLine[Run] in ['e', 'E'] then
+  begin
+    i := Run + 1;
+    if fLine[i] in ['+', '-'] then Inc(i);
+    if fLine[i] in ['0'..'9'] then
+    begin
+      Run := i;
+      while fLine[Run] in ['0'..'9'] do Inc(Run);
+    end;
+  end;
 end;
 
 procedure TFunSyntax.RegexProc;
@@ -961,6 +1001,11 @@ end;
 
 procedure TFunSyntax.SymbolProc;
 begin
+  if (fLine[Run] = '.') and (fLine[Run + 1] in ['0'..'9']) then
+  begin
+    NumberProc;
+    Exit;
+  end;
   fTokenID := tkSymbol;
   Inc(Run);
   if (fLine[Run-1] = '.') and (fLine[Run] = '#') then Inc(Run);
@@ -991,7 +1036,7 @@ begin
       '#': Comment3OpenProc;
       #1..#9, #11, #12, #14..#32: SpaceProc;
       //'#': CommentProc;
-      '$', '_', '@'..'Z', 'a'..'z': IdentProc;
+      '$', '_', '@', 'A'..'Z', 'a'..'z': IdentProc;
       '0'..'9': NumberProc;
       '/', '%': RegexProc;
       '~', '!', '^', '&', '*', '(', ')', '-', '+', '=', '[', ']', '{', '}', '\', '|', ';', ':', ',', '.', '<', '>', '?': SymbolProc;
@@ -1051,7 +1096,7 @@ end;
 function TFunSyntax.IsIdentChar(AChar: WideChar): Boolean;
 begin
   case AChar of
-    '$', '_', '@'..'Z', 'a'..'z', '0'..'9':
+    '$', '_', '@', 'A'..'Z', 'a'..'z', '0'..'9':
       Result := True;
     else
       Result := False;

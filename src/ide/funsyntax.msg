@@ -4,7 +4,7 @@ tk
 
 Sensitive
 
-IdentStart '$', '_', '@'..'Z', 'a'..'z':: '$', '_', '@'..'Z', 'a'..'z', '0'..'9'::
+IdentStart '$', '_', '@', 'A'..'Z', 'a'..'z':: '$', '_', '@', 'A'..'Z', 'a'..'z', '0'..'9'::
 
 TOKENTYPES
 
@@ -42,7 +42,7 @@ this base result @
 
 CHARS
 
-'$', '_', '@'..'Z', 'a'..'z':: Ident
+'$', '_', '@', 'A'..'Z', 'a'..'z':: Ident
 var
   i, j: integer;
 BeginProc
@@ -81,10 +81,50 @@ BeginProc
 EndProc
 
 '0'..'9':: Number
+var
+  c: WideChar;
+  i: Integer;
 BeginProc
   fTokenID := tkNumber;
-  Inc(Run);
+  c := fLine[Run];
+  if c = '0' then
+  begin
+    if fLine[Run + 1] in ['x', 'X'] then
+    begin
+      if fLine[Run + 2] in ['0'..'9', 'A'..'F', 'a'..'f'] then
+      begin
+        Inc(Run, 2);
+        while fLine[Run] in ['0'..'9', 'A'..'F', 'a'..'f'] do Inc(Run);
+        Exit;
+      end;
+    end
+    else if fLine[Run + 1] in ['b', 'B'] then
+    begin
+      if fLine[Run + 2] in ['0', '1'] then
+      begin
+        Inc(Run, 2);
+        while fLine[Run] in ['0', '1'] do Inc(Run);
+        Exit;
+      end;
+    end;
+  end;
+  if c = '.' then Inc(Run);
   while fLine[Run] in ['0'..'9'] do Inc(Run);
+  if (fLine[Run] = '.') and (fLine[Run + 1] in ['0'..'9']) then
+  begin
+    Inc(Run);
+    while fLine[Run] in ['0'..'9'] do Inc(Run);
+  end;
+  if fLine[Run] in ['e', 'E'] then
+  begin
+    i := Run + 1;
+    if fLine[i] in ['+', '-'] then Inc(i);
+    if fLine[i] in ['0'..'9'] then
+    begin
+      Run := i;
+      while fLine[Run] in ['0'..'9'] do Inc(Run);
+    end;
+  end;
 EndProc
 
 '/', '%':: Regex
@@ -144,6 +184,11 @@ EndProc
 
 '~', '!', '^', '&', '*', '(', ')', '-', '+', '=', '[', ']', '{', '}', '\', '|', ';', ':', ',', '.', '<', '>', '?':: Symbol
 BeginProc
+  if (fLine[Run] = '.') and (fLine[Run + 1] in ['0'..'9']) then
+  begin
+    NumberProc;
+    Exit;
+  end;
   fTokenID := tkSymbol;
   Inc(Run);
   if (fLine[Run-1] = '.') and (fLine[Run] = '#') then Inc(Run);
