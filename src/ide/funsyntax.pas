@@ -868,7 +868,7 @@ end;
 
 procedure TFunSyntax.IdentProc;
 var
-  i, j: Integer;
+  i, j, k, prevLen: Integer;
 begin
   if (fLine[Run] = '$') and (fLine[Run+1] in ['"', '''', '`']) then
   begin
@@ -893,7 +893,33 @@ begin
           while (j > 0) and (fLine[j] in [' ', #9]) do Dec(j);
           if (j > 0) and
              (IsIdentChar(fLine[j]) or (fLine[j] in [')', ']', '}', '"', '''', '`'])) then
-            fTokenID := tkIdentifier;
+          begin
+            if IsIdentChar(fLine[j]) then
+            begin
+              k := j;
+              while (k > 1) and IsIdentChar(fLine[k - 1]) do Dec(k);
+              // A keyword preceded by a dot is itself a member name
+              // (obj.then?.x) and therefore still an operand.
+              if (k > 1) and (fLine[k - 1] = '.') then
+                fTokenID := tkIdentifier
+              else
+              begin
+                // `then ?. exp` / `else ?. exp` / `do ?. exp` use the echo
+                // operator, so the word after the dot is an expression, not
+                // a member.  Only expression operands (this, base, result
+                // and plain identifiers) may be followed by `?.`.
+                prevLen := fStringLen;
+                if (IdentKind(fLine + k) <> tkKey) or
+                   IsCurrentToken('base') or
+                   IsCurrentToken('result') or
+                   IsCurrentToken('this') then
+                  fTokenID := tkIdentifier;
+                fStringLen := prevLen;
+              end;
+            end
+            else
+              fTokenID := tkIdentifier;
+          end;
         end
         else
           fTokenID := tkIdentifier;
